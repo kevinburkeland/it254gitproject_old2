@@ -1,0 +1,49 @@
+#!/bin/bash
+
+
+#spin up server inctance running docker with wordpress containerized 
+#>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
+
+#download jq so you can obtain instance id
+sudo apt-get install jq
+
+#make sure cli host server is up to date
+sudo apt update && sudo apt -y upgrade
+
+#create security group
+aws ec2 create-security-group --group-name midterm_sg --description "midterm security group"
+
+#obtain midterm_sg ID describe SG
+sgid= aws ec2 describe-security-groups --group-names midterm_sg --query 'SecurityGroups[*].[GroupId]' --output text
+
+
+#obtain local ip of host running this script to be added to security group
+IP=`curl -s http://whatismyip.akamai.com/`
+
+#authorize host pc ip address to be added to security group
+aws ec2 authorize-security-group-ingress --group-name "midterm_sg" --protocol tcp --port 22   --cidr $IP/32
+aws ec2 authorize-security-group-ingress --group-name "midterm_sg" --protocol tcp --port 3389 --cidr $IP/32
+#>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
+
+#Spin up instance that is joined into new (midterm_sg) security group
+#and loads kickstart file from webserver
+
+aws ec2 run-instances --image-id ami-0747bdcabd34c712a --count 1 --instance-type t2.micro --key-name Ubuntukeypair --security-group-id $sgid --user-data http://52.5.248.118/kickstart.sh| jq -r ".Instances[0].InstanceId" > instanceid.txt
+
+#pull id out of txt file with cat
+instanceid=$(cat instanceid.txt)
+
+#plug $instanceid into command to name instance
+
+aws ec2 create-tags --resources $instanceid --tags Key=Name,Value=Midterm?
+
+#aws ec2 authorize-security-group-ingress --group-name midterm_sg --protocol tcp --port 22 --cidr "$localip"
+#script to create instance and use kickstart.sh file to install docker with a wordpress container
+
+
+
+
+
+#aws ec2 run-instances --image-id ami-0747bdcabd34c712a --count 1 --instance-type t2.micro --key-name Ubuntukeypair --security-group-ids "createsecuritygroupforlab user-data "file/kickstart" --user-data file://kickstart.sh
+
+
